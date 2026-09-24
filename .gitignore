@@ -1,0 +1,97 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Google OAuth & MCP Credentials/Tokens
+credentials.json
+calendar_credentials.json
+calendar_token.json
+google_mcp_credentials.json
+google_mcp_token.json
+google_token.json
+token.json
+*_credentials.json
+*_token.json
+
+# Python
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.eggs/
+
+# Databases & Vector Indexes
+store/*.db
+data/*.db
+data/vectors.faiss
+*.db
+*.sqlite
+*.sqlite3
+*.faiss
+
+# Local Data, Memory, Store & Screenshots
+data/
+memory/
+store/
+screenshots/
+scratch/
+
+# Large Archives & Binaries
+*.zip
+*.tar.gz
+*.7z
+*.rar
+desktop.zip
+backend.zip
+tools.zip
+whatsapp_mcp.zip
+memory.zip
+mcp_client.zip
+
+# Debug Dumps, Temporary & Log Files
+*.log
+good.txt
+code_test.py
+hello.py
+test_calc.py
+browser-dom-service.txt
+browser-extension-search.txt
+browser-session.txt
+browser-use-dom-callers.txt
+browser-use-dom-search.txt
+browser-use-files.txt
+content-lines-330-380.txt
+dom-search-result.txt
+extension-dom-search.txt
+structure.txt
+
+# Node / Vite Frontend (desktop)
+desktop/node_modules/
+desktop/dist/
+desktop/dist-isolation/
+desktop/.tauri/
+desktop/build/
+node_modules/
+
+# Rust / Tauri Build Artifacts
+desktop/src-tauri/target/
+target/
+
+# OS / IDE Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
