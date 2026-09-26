@@ -193,7 +193,8 @@ def search_file(filename: str) -> str:
 @tool
 def get_file(filepath: str) -> str:
     """
-    Return the path of an existing file.
+    Locate and return an existing file to give, attach, or show it in the chat.
+    Use this whenever the user asks to 'give', 'get', 'show', 'fetch', or find a file.
     """
 
     filepath = os.path.expandvars(
@@ -201,23 +202,68 @@ def get_file(filepath: str) -> str:
     )
 
     if not os.path.isfile(filepath):
-
         return (
             f"File not found: "
             f"{filepath}"
         )
 
-    return filepath
+    filename = os.path.basename(filepath)
+    normalized = filepath.replace("\\", "/")
+    lower = filename.lower()
+    if lower.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")):
+        return f"File found: {filepath}. Markdown: ![{filename}]({normalized})"
+
+    return f"File found: {filepath}. Markdown: [{filename}]({normalized})"
 
 
 # =========================================================
-# OPEN FILE
+# READ FILE (ONLY WHEN EXPLICITLY ASKED FOR CONTENTS)
+# =========================================================
+
+@tool
+def read_file(filepath: str) -> str:
+    """
+    Read and return the text content written inside a file.
+    ONLY use this tool when the user explicitly asks to READ, inspect, or see the text/code content INSIDE a file
+    (e.g., 'what is written in good.txt', 'read good.txt', 'show me the contents of the file').
+    Do NOT use this tool when the user simply asks to 'give' or 'show' the file itself; use get_file instead.
+    """
+
+    filepath = os.path.expandvars(
+        os.path.expanduser(filepath)
+    )
+
+    if not os.path.isfile(filepath):
+        return (
+            f"File not found: "
+            f"{filepath}"
+        )
+
+    lower = filepath.lower()
+    if lower.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")):
+        normalized = filepath.replace("\\", "/")
+        return f"Image file: ![{os.path.basename(filepath)}]({normalized})"
+
+    try:
+        with open(filepath, "r", encoding="utf-8", errors="replace") as file:
+            content = file.read(50000)
+            if len(content) >= 50000:
+                content += "\n... [Content truncated at 50,000 characters]"
+            return content
+    except Exception as e:
+        return f"Failed to read file: {e}"
+
+
+# =========================================================
+# OPEN FILE (ON OPERATING SYSTEM)
 # =========================================================
 
 @tool
 def open_file(filepath: str) -> str:
     """
-    Open a file using the default Windows application.
+    Open a file using the default Windows application on the desktop.
+    CRITICAL: ONLY use this tool when the user explicitly requests to 'open' a file.
+    NEVER use this tool if the user says 'show', 'give', 'display', or 'view'.
     """
 
     filepath = os.path.expandvars(

@@ -330,6 +330,7 @@ from tools.system_tools import (
 from tools.file_tools import (
     search_file,
     get_file,
+    read_file,
     open_file,
     write_file,
     move_file,
@@ -583,6 +584,7 @@ def get_session_memory(conversation_id):
 FILE_TOOLS = [
     search_file,
     get_file,
+    read_file,
     open_file,
     write_file,
     move_file,
@@ -889,6 +891,41 @@ GENERAL
 
 
 ============================================================
+FILE RETURN RULES: "SHOW" / "GIVE" VS "OPEN" (CRITICAL)
+============================================================
+
+1. IF THE USER SAYS "SHOW" OR "GIVE" (e.g. "show me the file", "give me good.txt", "show the screenshot", "show it to me"):
+   - You must RETURN THE FILE DIRECTLY IN THE CHAT AS AN ATTACHMENT / FILE CARD.
+   - For image files (PNG, JPG, JPEG, GIF, WEBP, SVG):
+     Render the image directly in the chat using Markdown image syntax:
+     ![Image Name](C:/path/to/image.png)
+     (The chat UI automatically renders this as an inline interactive image card).
+   - For all other files (text files, code, documents, PDF, spreadsheets, archives, etc.):
+     Return the file directly using Markdown file attachment link syntax:
+     [filename.ext](C:/path/to/file.ext)
+     Example: [good.txt](C:/Users/dhanu/Downloads/hi/hiii/yeee/good.txt)
+     (The desktop UI automatically renders this as a rich, interactive file attachment card with Open and Download buttons, exactly like Claude).
+   - DO NOT dump the file content or code into code blocks unless the user explicitly asks to "read", "print", "display contents", or "what is written inside".
+   - DO NOT write "Contents: ..." or "Path: `C:\...`" in code blocks. Simply provide the file card link [filename](filepath).
+   - NEVER call open_file, open_application, or open_file_with_application when the user says "show", "give", "display", "get", or "view".
+   - Do NOT launch or open any external application window on the Windows desktop for "show" or "give".
+
+2. ONLY OPEN ON THE OPERATING SYSTEM IF THE USER EXPLICITLY SAYS "OPEN":
+   - ONLY call open_file, open_application, or open_file_with_application (launching an app/window on the desktop) if the user's message EXPLICITLY contains the word "open" (e.g. "open good.txt", "open Notepad", "open this in VS Code").
+   - If the user did NOT explicitly say "open", NEVER launch an application or open the file on the operating system.
+
+
+============================================================
+IMAGE & MEDIA DISPLAY RULES
+============================================================
+
+1. The desktop application UI AUTOMATICALLY renders inline image cards for any local image file path.
+2. Whenever you take a screenshot, capture the screen, create an image, reference a local image file, or the user asks to "show" or "give" an image, ALWAYS include the full image path in your final response using standard Markdown image syntax:
+   ![Screenshot](C:/Users/dhanu/Desktop/Screenshot_filename.png)
+3. NEVER state "I cannot display images inline" or "the image is saved to disk so I can't show it here". The chat UI automatically renders the image inline to the user when you include the Markdown image tag `![Screenshot](filepath)`.
+
+
+============================================================
 VERY IMPORTANT: FOLLOW-UP CONTEXT
 ============================================================
 
@@ -1166,6 +1203,13 @@ FILES
 ============================================================
 
 Use file tools for local files.
+
+SHOW / GIVE VS OPEN:
+- "show" or "give" (e.g. "show me good.txt", "give me the file"): Return the file directly in the chat window.
+  - Image files: return inline image markdown ![Image](path).
+  - Text / code / document files: read and display content inside chat using read_file, or provide the file path/content.
+  - NEVER launch an external desktop application or call open_file for "show" or "give".
+- "open": ONLY launch/open a file on the Windows desktop if the user explicitly uses the word "open" in their message.
 
 FILE SEARCH VS CONTENT SEARCH:
 
@@ -1560,7 +1604,7 @@ def build_system_message():
 # ============================================================
 
 TOOL_GROUP_DESCRIPTIONS = {
-    "file": "Local file operations: search files by filename/path/extension, retrieve files, open, write, move, copy, and open files with applications. Do not use for searching inside file contents.",
+    "file": "Local file operations: search files by filename/path/extension, retrieve or read files to return them in chat, open files (only when explicitly requested to 'open'), write, move, copy, and open files with applications. Do not use for searching inside file contents.",
     "rag": "Search information inside local file contents and answer questions from file/document content.",
     "folder": "Local folder operations: search, open, move, copy, and open folders with applications.",
     "application": "Windows application operations: open, close, locate application paths, and open files/folders with applications.",
@@ -2168,6 +2212,66 @@ def run_agent(
 
     if answer is None:
         answer = "I couldn't generate a response."
+
+    # --------------------------------------------------------
+    # Ensure any media/image filepaths returned by tools during
+    # this turn are included in the final answer for UI rendering.
+    # --------------------------------------------------------
+    import re
+    img_pattern = re.compile(
+        r'([A-Za-z]:\\[^\s\n"\'\(\)]+\.(?:png|jpg|jpeg|gif|webp|svg)|'
+        r'[A-Za-z]:/[^\s\n"\'\(\)]+\.(?:png|jpg|jpeg|gif|webp|svg))',
+        re.IGNORECASE,
+    )
+
+    missing_images = []
+    for msg in new_messages:
+        if isinstance(msg, ToolMessage) and msg.content:
+            matches = img_pattern.findall(str(msg.content))
+            for path in matches:
+                normalized = path.replace("\\", "/")
+                # Check if an actual markdown image tag already exists for this image in the answer
+                has_image_tag = bool(
+                    re.search(r'!\[.*?\]\([^\)]*' + re.escape(normalized) + r'[^\)]*\)', answer, re.IGNORECASE)
+                    or re.search(r'!\[.*?\]\([^\)]*' + re.escape(path) + r'[^\)]*\)', answer, re.IGNORECASE)
+                )
+                if not has_image_tag and normalized not in missing_images:
+                    missing_images.append(normalized)
+
+    if missing_images:
+        images_markdown = "\n\n" + "\n\n".join(
+            f"![Screenshot]({p})" for p in missing_images
+        )
+        answer = answer.strip() + images_markdown
+
+    # Ensure other document/code/data files returned by tools are included as file attachment cards
+    file_pattern = re.compile(
+        r'([A-Za-z]:\\[^\s\n"\'\(\)]+\.[a-zA-Z0-9]{1,10}|'
+        r'[A-Za-z]:/[^\s\n"\'\(\)]+\.[a-zA-Z0-9]{1,10})',
+        re.IGNORECASE,
+    )
+    missing_files = []
+    for msg in new_messages:
+        if isinstance(msg, ToolMessage) and msg.content:
+            matches = file_pattern.findall(str(msg.content))
+            for path in matches:
+                normalized = path.replace("\\", "/")
+                basename = normalized.split("/")[-1]
+                ext = basename.split(".")[-1].lower() if "." in basename else ""
+                if ext in {"png", "jpg", "jpeg", "gif", "webp", "svg"}:
+                    continue
+                has_file_tag = bool(
+                    re.search(r'\[.*?\]\([^\)]*' + re.escape(normalized) + r'[^\)]*\)', answer, re.IGNORECASE)
+                    or re.search(r'\[.*?\]\([^\)]*' + re.escape(path) + r'[^\)]*\)', answer, re.IGNORECASE)
+                )
+                if not has_file_tag and normalized not in missing_files:
+                    missing_files.append(normalized)
+
+    if missing_files:
+        files_markdown = "\n\n" + "\n\n".join(
+            f"[{p.split('/')[-1]}]({p})" for p in missing_files
+        )
+        answer = answer.strip() + files_markdown
 
     # --------------------------------------------------------
     # Save ONLY the real user turn and final assistant answer.

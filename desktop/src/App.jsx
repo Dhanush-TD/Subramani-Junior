@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import "./App.css";
 
 const API_BASE = "http://127.0.0.1:8000";
@@ -28,6 +30,256 @@ async function api(path, options = {}) {
   return response.json();
 }
 
+function resolveFileUrl(src) {
+  if (!src) return src;
+  if (
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("data:") ||
+    src.startsWith("mailto:") ||
+    src.startsWith("#")
+  ) {
+    return src;
+  }
+  let cleanPath = src.trim().replace(/^["']|["']$/g, "");
+  if (cleanPath.startsWith("file:///")) cleanPath = cleanPath.slice(8);
+  else if (cleanPath.startsWith("file://")) cleanPath = cleanPath.slice(7);
+
+  cleanPath = cleanPath.replace(/\\/g, "/");
+
+  return `${API_BASE}/files?path=${encodeURIComponent(cleanPath)}`;
+}
+
+function getFileMeta(filePath, customName) {
+  let clean = filePath || "";
+  try {
+    const url = new URL(clean, "http://localhost");
+    if (url.searchParams.has("path")) {
+      clean = url.searchParams.get("path");
+    }
+  } catch {}
+
+  const basename =
+    clean.split(/[/\\]/).filter(Boolean).pop() || customName || "file";
+  const ext = (basename.includes(".") ? basename.split(".").pop() : "").toLowerCase();
+
+  let category = "document";
+  let typeLabel = ext ? ext.toUpperCase() : "File";
+  let colorClass = "file-icon-doc";
+
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"].includes(ext)) {
+    category = "image";
+    typeLabel = `Image · ${ext.toUpperCase()}`;
+    colorClass = "file-icon-img";
+  } else if (
+    [
+      "py",
+      "js",
+      "jsx",
+      "ts",
+      "tsx",
+      "html",
+      "css",
+      "json",
+      "c",
+      "cpp",
+      "java",
+      "rs",
+      "go",
+      "sql",
+      "sh",
+      "bat",
+      "ps1",
+    ].includes(ext)
+  ) {
+    category = "code";
+    typeLabel = `Code · ${ext.toUpperCase()}`;
+    colorClass = "file-icon-code";
+  } else if (["txt", "md", "pdf", "doc", "docx", "rtf", "odt"].includes(ext)) {
+    category = "document";
+    typeLabel =
+      ext === "txt"
+        ? "Text · TXT"
+        : ext === "pdf"
+        ? "Document · PDF"
+        : `Document · ${ext.toUpperCase()}`;
+    colorClass = "file-icon-doc";
+  } else if (["csv", "xls", "xlsx", "tsv"].includes(ext)) {
+    category = "spreadsheet";
+    typeLabel = `Spreadsheet · ${ext.toUpperCase()}`;
+    colorClass = "file-icon-data";
+  } else if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) {
+    category = "archive";
+    typeLabel = `Archive · ${ext.toUpperCase()}`;
+    colorClass = "file-icon-archive";
+  } else if (["mp3", "wav", "m4a", "flac", "ogg"].includes(ext)) {
+    category = "audio";
+    typeLabel = `Audio · ${ext.toUpperCase()}`;
+    colorClass = "file-icon-audio";
+  } else if (["mp4", "mkv", "avi", "mov", "webm"].includes(ext)) {
+    category = "video";
+    typeLabel = `Video · ${ext.toUpperCase()}`;
+    colorClass = "file-icon-video";
+  }
+
+  return { basename, ext, category, typeLabel, colorClass, rawPath: clean };
+}
+
+function FileCategoryIcon({ category }) {
+  switch (category) {
+    case "image":
+      return (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+      );
+    case "code":
+      return (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+      );
+    case "spreadsheet":
+      return (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M3 9h18M3 15h18M9 3v18" />
+        </svg>
+      );
+    case "archive":
+      return (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="21 8 21 21 3 21 3 8" />
+          <rect x="1" y="3" width="22" height="5" />
+          <line x1="10" y1="12" x2="14" y2="12" />
+        </svg>
+      );
+    case "audio":
+    case "video":
+      return (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3" />
+        </svg>
+      );
+    default:
+      return (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
+        </svg>
+      );
+  }
+}
+
+function FileCard({ href, name }) {
+  const meta = getFileMeta(href, name);
+  const downloadUrl = href.startsWith("http") ? href : resolveFileUrl(href);
+
+  const handleOpen = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await api(`/files/open?path=${encodeURIComponent(meta.rawPath)}`, {
+        method: "POST",
+      });
+    } catch {
+      window.open(downloadUrl, "_blank");
+    }
+  };
+
+  const handleDownload = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = meta.basename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  return (
+    <div className="claude-file-card" onClick={handleOpen} role="button" tabIndex={0}>
+      <div className={`file-card-icon-box ${meta.colorClass}`}>
+        <FileCategoryIcon category={meta.category} />
+      </div>
+      <div className="file-card-info">
+        <span className="file-card-title" title={meta.rawPath}>
+          {meta.basename}
+        </span>
+        <span className="file-card-subtitle">{meta.typeLabel}</span>
+      </div>
+      <div className="file-card-actions">
+        <button
+          type="button"
+          className="file-card-action-btn open-btn"
+          onClick={handleOpen}
+          title="Open with default desktop app"
+        >
+          Open ↗
+        </button>
+        <button
+          type="button"
+          className="file-card-action-btn download-btn"
+          onClick={handleDownload}
+          title="Download file"
+        >
+          Download ⭳
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function preprocessMessageContent(content) {
+  if (!content) return "";
+
+  // 1. Normalize Windows backslashes inside existing Markdown image tags: ![alt](C:\path\file.png) -> ![alt](C:/path/file.png)
+  let text = content.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+    const cleanUrl = url.trim().replace(/\\/g, "/");
+    return `![${alt}](${cleanUrl})`;
+  });
+
+  // 2. Normalize Windows backslashes inside existing Markdown link tags: [name](C:\path\file.ext) -> [name](C:/path/file.ext)
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, name, url) => {
+    const cleanUrl = url.trim().replace(/\\/g, "/");
+    return `[${name}](${cleanUrl})`;
+  });
+
+  // 3. Convert standalone or backticked Windows file paths that are NOT already inside a Markdown link
+  // e.g., `C:\Users\...\good.txt` or Path: C:\Users\...\good.txt
+  const standaloneFileRegex =
+    /(?<!\()(?<!\]\()(?<!\[)(?:`\s*)?([A-Za-z]:[\\/][^\s\n"'\(\)`]+\.([a-zA-Z0-9]{1,10}))(?:\s*`)?(?!\))/gi;
+
+  text = text.replace(standaloneFileRegex, (match, fullPath, ext) => {
+    const normalized = fullPath.replace(/\\/g, "/");
+    const filename = normalized.split("/").pop();
+    const lowerExt = (ext || "").toLowerCase();
+
+    // If it's an image and not already formatted, make image tag
+    if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(lowerExt)) {
+      if (!text.includes(`](${normalized})`)) {
+        return `\n\n![${filename}](${normalized})\n\n`;
+      }
+      return match;
+    }
+
+    // For any document/code/data file, turn into Markdown file link [filename](path)
+    if (!text.includes(`](${normalized})`)) {
+      return `\n\n[${filename}](${normalized})\n\n`;
+    }
+    return match;
+  });
+
+  return text;
+}
+
 function Icon({ children, className = "" }) {
   return <span className={`icon ${className}`}>{children}</span>;
 }
@@ -40,6 +292,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [backendOnline, setBackendOnline] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
 
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -47,6 +300,95 @@ function App() {
   const activeConversation = useMemo(
     () => conversations.find((chat) => chat.id === conversationId),
     [conversations, conversationId],
+  );
+
+  const markdownComponents = useMemo(
+    () => ({
+      img({ src, alt }) {
+        if (!src) return null;
+        const fileUrl = resolveFileUrl(src);
+        if (!fileUrl) return null;
+
+        return (
+          <div className="chat-image-card">
+            <img
+              src={fileUrl}
+              alt={alt || "Screenshot / Image"}
+              className="chat-inline-img"
+              onClick={() => setPreviewImage(fileUrl)}
+              onError={(e) => {
+                console.error("Failed to load image from:", fileUrl);
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <div className="chat-image-meta">
+              <span className="chat-image-title">{alt || "Image preview"}</span>
+              <button
+                type="button"
+                className="chat-image-open-btn"
+                onClick={() => window.open(fileUrl, "_blank")}
+              >
+                ↗ Open
+              </button>
+            </div>
+          </div>
+        );
+      },
+      code({ inline, className, children, ...props }) {
+        const match = /language-(\w+)/.exec(className || "");
+        const codeText = String(children).replace(/\n$/, "");
+        return !inline ? (
+          <div className="code-block-container">
+            <div className="code-block-header">
+              <span>{match ? match[1] : "code"}</span>
+              <button
+                type="button"
+                className="copy-code-btn"
+                onClick={() => navigator.clipboard.writeText(codeText)}
+              >
+                Copy
+              </button>
+            </div>
+            <pre className="code-block-body">
+              <code className={className} {...props}>
+                {children}
+              </code>
+            </pre>
+          </div>
+        ) : (
+          <code className="inline-code" {...props}>
+            {children}
+          </code>
+        );
+      },
+      a({ href, children }) {
+        if (!href) return <a>{children}</a>;
+
+        // Check if this link points to a file or file endpoint
+        const isFileLink =
+          href.includes("/files?path=") ||
+          /^[A-Za-z]:[/\\]/i.test(href) ||
+          href.startsWith("file://") ||
+          /\.([a-zA-Z0-9]{1,6})($|\?)/.test(href);
+
+        if (isFileLink) {
+          const fileName = typeof children === "string" ? children : "";
+          return <FileCard href={href} name={fileName} />;
+        }
+
+        return (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="chat-link"
+          >
+            {children}
+          </a>
+        );
+      },
+    }),
+    [],
   );
 
   // ---------------------------------------
@@ -670,8 +1012,12 @@ function App() {
                     {/* Message */}
 
                     <div className="message-content">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {message.content}
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownComponents}
+                        urlTransform={(url) => resolveFileUrl(url)}
+                      >
+                        {preprocessMessageContent(message.content)}
                       </ReactMarkdown>
                     </div>
 
@@ -775,6 +1121,26 @@ function App() {
         </div>
 
       </main>
+
+      {previewImage && (
+        <div
+          className="image-modal-overlay"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="image-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="image-modal-close"
+              onClick={() => setPreviewImage(null)}
+            >
+              ×
+            </button>
+            <img src={previewImage} alt="Expanded preview" />
+          </div>
+        </div>
+      )}
 
     </div>
   );

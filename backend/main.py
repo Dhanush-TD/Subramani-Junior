@@ -1,6 +1,9 @@
 import logging
-from fastapi import FastAPI
+import mimetypes
+from pathlib import Path
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.chat import process_chat_message
@@ -270,6 +273,91 @@ def receive_dom(payload: dict = None):
 def options_dom():
     """Fallback options handler for /dom if needed."""
     return {"status": "ok"}
+
+
+# ============================================================
+# FILE SERVING ENDPOINT
+# ============================================================
+
+
+@app.get("/files")
+def get_file(path: str):
+    """Serves local files (images, screenshots, documents) for rendering in frontend."""
+    from urllib.parse import unquote
+
+    decoded_path = unquote(path).strip('"`\'')
+    if decoded_path.startswith("file:///"):
+        decoded_path = decoded_path[8:]
+    elif decoded_path.startswith("file://"):
+        decoded_path = decoded_path[7:]
+
+    file_path = Path(decoded_path).resolve()
+    if not file_path.exists() or not file_path.is_file():
+        # Try unescaping backslashes if resolve failed
+        file_path = Path(decoded_path.replace("/", "\\")).resolve()
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found: {path}")
+
+    mime_type, _ = mimetypes.guess_type(file_path)
+    return FileResponse(
+        str(file_path),
+        media_type=mime_type or "application/octet-stream",
+        filename=file_path.name,
+    )
+
+
+@app.post("/files/open")
+def open_local_file(path: str):
+    """Opens a local file using the Windows default application."""
+    import os
+    from urllib.parse import unquote
+
+    decoded_path = unquote(path).strip('"`\'')
+    if decoded_path.startswith("file:///"):
+        decoded_path = decoded_path[8:]
+    elif decoded_path.startswith("file://"):
+        decoded_path = decoded_path[7:]
+
+    file_path = Path(decoded_path).resolve()
+    if not file_path.exists() or not file_path.is_file():
+        file_path = Path(decoded_path.replace("/", "\\")).resolve()
+
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found: {path}")
+
+    try:
+        os.startfile(str(file_path))
+        return {"status": "ok", "opened": str(file_path)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to open file: {e}")
+
+
+@app.post("/files/reveal")
+def reveal_local_file(path: str):
+    """Reveals the file in Windows File Explorer."""
+    import subprocess
+    from urllib.parse import unquote
+
+    decoded_path = unquote(path).strip('"`\'')
+    if decoded_path.startswith("file:///"):
+        decoded_path = decoded_path[8:]
+    elif decoded_path.startswith("file://"):
+        decoded_path = decoded_path[7:]
+
+    file_path = Path(decoded_path).resolve()
+    if not file_path.exists():
+        file_path = Path(decoded_path.replace("/", "\\")).resolve()
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {path}")
+
+    try:
+        subprocess.run(["explorer", f"/select,{file_path}"], check=False)
+        return {"status": "ok", "revealed": str(file_path)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reveal file: {e}")
+
 
 
 

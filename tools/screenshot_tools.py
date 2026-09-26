@@ -29,7 +29,8 @@ def take_screenshot():
         screenshot = ImageGrab.grab()
         screenshot.save(filepath)
 
-        return f"Screenshot saved successfully: {filepath}"
+        normalized_path = filepath.replace("\\", "/")
+        return f"Screenshot saved successfully to {filepath}. Image: ![Screenshot]({normalized_path})"
 
     except Exception as e:
         return f"Could not take screenshot: {e}"

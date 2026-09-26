@@ -684,3 +684,313 @@ button {
     padding-bottom: 145px;
   }
 }
+
+/* ============================================================
+   CHATGPT-LIKE MARKDOWN, IMAGES & CODE STYLING
+============================================================ */
+
+.message-content img {
+  max-width: 100%;
+  border-radius: 12px;
+}
+
+.chat-image-card {
+  margin: 12px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-width: 480px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.chat-inline-img {
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: cover;
+  display: block;
+  cursor: zoom-in;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.chat-inline-img:hover {
+  opacity: 0.92;
+}
+
+.chat-image-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #252525;
+  font-size: 12px;
+  color: #a0a0a0;
+}
+
+.chat-image-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+.chat-image-open-btn {
+  background: #383838;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.chat-image-open-btn:hover {
+  background: #4a4a4a;
+}
+
+.code-block-container {
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: #171717;
+  color: #8e8e8e;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.copy-code-btn {
+  background: transparent;
+  color: #aaaaaa;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.copy-code-btn:hover {
+  background: #2a2a2a;
+  color: #ffffff;
+}
+
+.code-block-body {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  font-family: "Fira Code", Consolas, Monaco, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e0e0e0;
+}
+
+.inline-code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9em;
+  color: #efefef;
+}
+
+.chat-link {
+  color: #60a5fa;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chat-link:hover {
+  color: #93c5fd;
+}
+
+/* IMAGE LIGHTBOX MODAL */
+.image-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.image-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.image-modal-content img {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.image-modal-close {
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #000000;
+  font-size: 20px;
+  font-weight: bold;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.image-modal-close:hover {
+  background: #e5e5e5;
+}
+
+/* ============================================================
+   CLAUDE-STYLE FILE ATTACHMENT CARD
+============================================================ */
+
+.claude-file-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: #23222a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  max-width: 480px;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+.claude-file-card:hover {
+  background: #2a2933;
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.file-card-icon-box {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  transition: transform 0.15s ease;
+}
+
+.claude-file-card:hover .file-card-icon-box {
+  transform: scale(1.05);
+}
+
+.file-icon-img {
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.file-icon-doc {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.file-icon-code {
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.file-icon-data {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.file-icon-archive {
+  background: rgba(236, 72, 153, 0.18);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.file-icon-audio,
+.file-icon-video {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.file-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.file-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f3f3f3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.1px;
+}
+
+.file-card-subtitle {
+  font-size: 11.5px;
+  color: #9e9ea7;
+  font-weight: 500;
+}
+
+.file-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.file-card-action-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #32313b;
+  color: #ececec;
+}
+
+.file-card-action-btn:hover {
+  background: #42404e;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.file-card-action-btn.download-btn {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.file-card-action-btn.download-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
